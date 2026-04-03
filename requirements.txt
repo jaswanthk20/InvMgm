@@ -1,4 +1,7 @@
 Flask==3.0.3
+gunicorn
+pandas
+openpyxl
 pdfplumber
 pytesseract
 Pillow

@@ -2,7 +2,7 @@ import sqlite3
 import os
 from flask import g
 
-DATABASE = 'database.db'
+DATABASE = os.environ.get('DATABASE_PATH', 'database.db')
 
 def get_db():
     db = getattr(g, '_database', None)
