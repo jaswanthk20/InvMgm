@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>Items Master</h1>
+    <button class="btn btn-primary" onclick="showAddItemModal()">+ Add New Item</button>
+</div>
+
+<div class="card mb-4" style="margin-bottom: 2rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+        <input type="text" id="item-search" placeholder="Filter items by name or SKU..." style="max-width: 400px;">
+        <div style="display:flex; gap: 0.5rem;">
+            <select id="category-filter" style="width: auto;">
+                <option value="">All Categories</option>
+            </select>
+            <button class="btn btn-secondary">Export</button>
+        </div>
+    </div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>SKU</th>
+                <th>Item Name</th>
+                <th>Category</th>
+                <th>Reorder Pt</th>
+                <th>Total Stock</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="items-table-body">
+            <tr><td colspan="6" class="text-muted text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Simple Add Item Modal structure (hidden by default) -->
+<div id="add-item-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 50;">
+    <div class="card" style="width: 500px; max-width: 90vw;">
+        <h3>Add New Item</h3>
+        <form id="add-item-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">
+            <div>
+                <label class="text-muted">SKU</label>
+                <input type="text" id="new-item-sku">
+            </div>
+            <div>
+                <label class="text-muted">Name *</label>
+                <input type="text" id="new-item-name" required>
+            </div>
+            <div>
+                <label class="text-muted">Unit *</label>
+                <input type="text" id="new-item-unit" value="pcs" required>
+            </div>
+            <div style="display:flex; gap: 1rem;">
+                <div style="flex:1;">
+                    <label class="text-muted">Min Stock</label>
+                    <input type="number" id="new-item-min" value="0">
+                </div>
+                <div style="flex:1;">
+                    <label class="text-muted">Reorder Point</label>
+                    <input type="number" id="new-item-reorder" value="0">
+                </div>
+            </div>
+            <div style="display:flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="hideAddItemModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Item</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadItems();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q');
+        const searchInput = document.getElementById('item-search');
+        if (q) {
+            searchInput.value = q;
+        }
+        
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const rows = document.querySelectorAll('#items-table-body tr');
+            rows.forEach(row => {
+                if (row.children.length > 1) {
+                    const text = row.innerText.toLowerCase();
+                    row.style.display = text.includes(term) ? '' : 'none';
+                }
+            });
+        });
+        
+        document.getElementById('add-item-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const payload = {
+                sku: document.getElementById('new-item-sku').value,
+                name: document.getElementById('new-item-name').value,
+                unit: document.getElementById('new-item-unit').value,
+                min_stock: parseInt(document.getElementById('new-item-min').value || 0),
+                reorder_point: parseInt(document.getElementById('new-item-reorder').value || 0)
+            };
+            
+            fetch('/api/items', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    hideAddItemModal();
+                    loadItems();
+                } else {
+                    alert('Failed to add item');
+                }
+            })
+            .catch(err => alert("Error: " + err));
+        });
+    });
+
+    function loadItems() {
+        document.getElementById('items-table-body').innerHTML = '<tr><td colspan="6" class="text-muted text-center">Loading...</td></tr>';
+        fetch('/api/items')
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('items-table-body');
+                tbody.innerHTML = '';
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">No items found.</td></tr>';
+                    return;
+                }
+                
+                data.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${item.sku || '-'}</td>
+                        <td style="font-weight: 500;">${item.name}</td>
+                        <td>${item.category_name || '-'}</td>
+                        <td>${item.reorder_point}</td>
+                        <td>0 ${item.unit}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Edit</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+                // Trigger filter after rendering
+                const searchInput = document.getElementById('item-search');
+                if (searchInput.value) {
+                    searchInput.dispatchEvent(new Event('input'));
+                }
+            })
+            .catch(err => {
+                document.getElementById('items-table-body').innerHTML = '<tr><td colspan="6" class="text-danger text-center">Failed to load items.</td></tr>';
+            });
+    }
+
+    function showAddItemModal() {
+        document.getElementById('add-item-modal').style.display = 'flex';
+    }
+    
+    function hideAddItemModal() {
+        document.getElementById('add-item-modal').style.display = 'none';
+        document.getElementById('add-item-form').reset();
+    }
+</script>
+{% endblock %}

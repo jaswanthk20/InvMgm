@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>Dashboard</h1>
+</div>
+
+<div class="dashboard-metrics">
+    <div class="card metric-card">
+        <span class="text-muted">Visibility Score</span>
+        <div class="metric-value">0<span style="font-size:1rem;color:var(--text-secondary)">/10</span></div>
+        <span class="metric-trend">Needs improvement</span>
+    </div>
+    <div class="card metric-card">
+        <span class="text-muted">Disruptions / Wk</span>
+        <div class="metric-value">12</div>
+        <span class="metric-trend text-danger">High disruption rate</span>
+    </div>
+    <div class="card metric-card">
+        <span class="text-muted">Pending Orders</span>
+        <div class="metric-value" id="dash-pending-orders">0</div>
+        <span class="metric-trend">Awaiting receipt</span>
+    </div>
+    <div class="card metric-card">
+        <span class="text-muted">Labeling Coverage</span>
+        <div class="metric-value">5%</div>
+        <span class="metric-trend">Goal: 50%</span>
+    </div>
+</div>
+
+<div class="dashboard-layout">
+    <div class="main-panels">
+        <div class="card mb-4">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3>Low Stock & Alerts</h3>
+                <button class="btn btn-secondary">View All</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Location</th>
+                        <th>Qty</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="low-stock-list">
+                    <!-- Loaded via JS -->
+                    <tr><td colspan="4" class="text-muted text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="card">
+            <h3>Recent Items Activity</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Action</th>
+                        <th>Qty</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="4" class="text-muted text-center">No recent activity</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="sidebar-panels">
+        <!-- Quick Transaction Widget -->
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3>Quick Transaction</h3>
+            <form id="quick-tx-form" style="margin-top: 1rem; display:flex; flex-direction:column; gap:0.75rem;">
+                <div>
+                    <label class="text-muted" style="margin-bottom:0.25rem; display:block;">Item</label>
+                    <select id="tx-item" required>
+                        <option value="">Select Item...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-muted" style="margin-bottom:0.25rem; display:block;">Location</label>
+                    <select id="tx-location" required>
+                        <option value="" disabled selected>Select Location...</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <div style="flex:1;">
+                        <label class="text-muted" style="margin-bottom:0.25rem; display:block;">Quantity</label>
+                        <input type="number" id="tx-qty" min="1" value="1" required>
+                    </div>
+                    <div style="flex:2; display:flex; gap:0.5rem; align-items:flex-end; height:100%;">
+                        <button type="button" class="btn btn-primary" onclick="submitTx('IN')" style="flex:1; margin-top:1.5rem;">IN</button>
+                        <button type="button" class="btn btn-secondary" onclick="submitTx('OUT')" style="flex:1; margin-top:1.5rem; border:1px solid var(--danger-color); color:var(--danger-color);">OUT</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <h3>Orders to Receive</h3>
+            <div class="text-muted" style="margin-top:0.5rem; margin-bottom: 1rem;">No pending purchase orders.</div>
+            <hr style="border:0; border-top:1px solid var(--border-color); margin-bottom: 1rem;">
+            <h4>Receipt / Invoice Upload</h4>
+            <div class="text-muted" style="font-size: 0.75rem; margin-bottom: 0.5rem;">PDFs & Images supported via OCR text extraction</div>
+            <form id="receipt-upload-form" style="display:flex; flex-direction:column; gap:0.5rem; margin-top: 0.5rem;">
+                <input type="file" id="receipt-file" accept=".csv,.pdf,image/*" required style="font-size: 0.8rem;">
+                <button type="submit" class="btn btn-secondary">Extract & Import</button>
+            </form>
+            <div id="receipt-result" style="margin-top:0.5rem; font-size:0.875rem;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // ... existing onload logic ...
+        
+        document.getElementById('receipt-upload-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('receipt-file');
+            if(!fileInput.files.length) return;
+            
+            const submitBtn = document.querySelector('#receipt-upload-form button');
+            const originalText = submitBtn.innerText;
+            submitBtn.innerText = "Extracting...";
+            submitBtn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            fetch('/api/import/receipt', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                const resDiv = document.getElementById('receipt-result');
+                if(data.success) {
+                    resDiv.innerHTML = `<span style="color:var(--success-color);">Extracted ${data.items_processed} items successfully.</span>`;
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    resDiv.innerHTML = `<span style="color:var(--danger-color);">Error: ${data.message}</span>`;
+                    submitBtn.innerText = originalText;
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(err => {
+                document.getElementById('receipt-result').innerText = 'Extraction failed.';
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+        // Fetch low stock items
+        fetch('/api/replenishment/low-stock')
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('low-stock-list');
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">All stock levels good.</td></tr>';
+                } else {
+                    tbody.innerHTML = '';
+                    data.forEach(item => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td style="font-weight: 500;">${item.name} <br><span class="text-muted" style="font-size:0.75rem">${item.sku || ''}</span></td>
+                                <td>Multiple</td>
+                                <td>${item.total_qty} <span class="text-muted">/ Min ${item.min_stock}</span></td>
+                                <td><span style="color:var(--danger-color); font-weight:600; font-size:0.875rem;">Low</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+            })
+            .catch(err => console.log('Low stock error', err));
+            
+        // Fetch dashboard metrics
+        fetch('/api/dashboard/metrics')
+            .then(r => r.json())
+            .then(data => {
+                const cards = document.querySelectorAll('.metric-card');
+                
+                // Visibility Score
+                cards[0].querySelector('.metric-value').innerHTML = `${data.visibility_score}<span style="font-size:1rem;color:var(--text-secondary)">/10</span>`;
+                
+                // Disruptions
+                cards[1].querySelector('.metric-value').innerText = data.disruptions;
+                if(data.disruptions > 5) cards[1].querySelector('.metric-trend').className = 'metric-trend text-danger';
+                else cards[1].querySelector('.metric-trend').className = 'metric-trend text-muted';
+                
+                // Pending Orders
+                cards[2].querySelector('.metric-value').innerText = data.pending_orders;
+                
+                // Labeling
+                cards[3].querySelector('.metric-value').innerText = `${data.labeling_coverage}%`;
+            })
+            .catch(err => console.log('Metrics error', err));
+            
+        // Load items for quick transaction
+        fetch('/api/items')
+            .then(r => r.json())
+            .then(data => {
+                const sel = document.getElementById('tx-item');
+                data.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = `${item.sku || 'N/A'} - ${item.name} (${item.unit})`;
+                    sel.appendChild(opt);
+                });
+            })
+            .catch(err => console.log('Items error', err));
+            
+        // Load locations for quick transaction
+        fetch('/api/locations')
+            .then(r => r.json())
+            .then(data => {
+                const sel = document.getElementById('tx-location');
+                data.forEach(loc => {
+                    const opt = document.createElement('option');
+                    opt.value = loc.id;
+                    opt.textContent = `${loc.zone || ''} ${loc.room || ''} ${loc.shelf || ''} ${loc.bin || ''}`;
+                    sel.appendChild(opt);
+                });
+            })
+            .catch(err => console.log('Locations error', err));
+    });
+
+    function submitTx(type) {
+        const itemId = document.getElementById('tx-item').value;
+        const locId = document.getElementById('tx-location').value;
+        const qty = parseInt(document.getElementById('tx-qty').value);
+        if(!itemId || !locId || !qty) {
+            alert("Please select item, location and quantity");
+            return;
+        }
+        
+        // Ensure default user logic handles movement POST
+        fetch('/api/transactions', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                item_id: itemId,
+                to_location_id: type === 'IN' ? locId : null,
+                from_location_id: type === 'OUT' ? locId : null,
+                quantity: qty,
+                movement_type: type
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                alert(`Stock ${type} successful!`);
+                window.location.reload();
+            } else {
+                alert(`Error: ${data.message || 'Unknown'}`);
+            }
+        })
+        .catch(err => alert("Transaction failed."));
+    }
+</script>
+{% endblock %}

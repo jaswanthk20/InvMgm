@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>Locations & Workshops</h1>
+    <button class="btn btn-primary" onclick="showAddModal()">+ Add New Location</button>
+</div>
+
+<div class="card mb-4">
+    <table>
+        <thead>
+            <tr>
+                <th>Zone / Workshop</th>
+                <th>Room</th>
+                <th>Shelf / Station</th>
+                <th>Bin</th>
+                <th>Labeled?</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="locations-table-body">
+            <tr><td colspan="6" class="text-muted text-center">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Location Modal -->
+<div id="add-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 50;">
+    <div class="card" style="width: 400px; max-width: 90vw;">
+        <h3>Add New Location</h3>
+        <form id="add-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">
+            <div>
+                <label class="text-muted">Zone / Workshop</label>
+                <input type="text" id="loc-zone" required placeholder="e.g., Mechanical Room">
+            </div>
+            <div>
+                <label class="text-muted">Room</label>
+                <input type="text" id="loc-room" placeholder="e.g., Main Floor">
+            </div>
+            <div>
+                <label class="text-muted">Shelf / Station</label>
+                <input type="text" id="loc-shelf" placeholder="e.g., Station 1">
+            </div>
+            <div>
+                <label class="text-muted">Bin</label>
+                <input type="text" id="loc-bin" placeholder="e.g., Bin A">
+            </div>
+            <div style="display:flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" id="loc-labeled">
+                <label class="text-muted">Is this location labeled?</label>
+            </div>
+            <div style="display:flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="hideAddModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLocations();
+        
+        document.getElementById('add-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const payload = {
+                zone: document.getElementById('loc-zone').value,
+                room: document.getElementById('loc-room').value,
+                shelf: document.getElementById('loc-shelf').value,
+                bin: document.getElementById('loc-bin').value,
+                is_labeled: document.getElementById('loc-labeled').checked ? 1 : 0
+            };
+            
+            fetch('/api/locations', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    hideAddModal();
+                    loadLocations();
+                } else {
+                    alert('Failed to add location');
+                }
+            })
+            .catch(err => alert("Error: " + err));
+        });
+    });
+
+    function loadLocations() {
+        document.getElementById('locations-table-body').innerHTML = '<tr><td colspan="6" class="text-muted text-center">Loading...</td></tr>';
+        fetch('/api/locations')
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('locations-table-body');
+                tbody.innerHTML = '';
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">No locations found.</td></tr>';
+                    return;
+                }
+                
+                data.forEach(loc => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="font-weight:500;">${loc.zone || '-'}</td>
+                        <td>${loc.room || '-'}</td>
+                        <td>${loc.shelf || '-'}</td>
+                        <td>${loc.bin || '-'}</td>
+                        <td>${loc.is_labeled ? '<span class="text-success" style="color:var(--success-color)">Yes</span>' : '<span class="text-danger" style="color:var(--danger-color)">No</span>'}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border:1px solid var(--danger-color); color:var(--danger-color);" onclick="deleteLocation(${loc.id})">Remove</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(err => {
+                document.getElementById('locations-table-body').innerHTML = '<tr><td colspan="6" class="text-danger text-center">Failed to load locations.</td></tr>';
+            });
+    }
+
+    function deleteLocation(id) {
+        if(!confirm("Are you sure you want to remove this location?")) return;
+        
+        fetch(`/api/locations/${id}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    loadLocations();
+                } else {
+                    alert('Failed to delete location. It may be linked to existing stock.');
+                }
+            })
+            .catch(err => alert("Delete error: " + err));
+    }
+
+    function showAddModal() {
+        document.getElementById('add-modal').style.display = 'flex';
+    }
+    function hideAddModal() {
+        document.getElementById('add-modal').style.display = 'none';
+        document.getElementById('add-form').reset();
+    }
+</script>
+{% endblock %}

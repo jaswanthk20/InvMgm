@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>Orders & Requests</h1>
+    <button class="btn btn-primary" onclick="showOrderModal()">+ Place Order Request</button>
+</div>
+
+<div class="dashboard-layout">
+    <div class="main-panels">
+        <div class="card mb-4">
+            <h3>Order History</h3>
+            <table style="margin-top:1rem;">
+                <thead>
+                    <tr>
+                        <th>PO ID</th>
+                        <th>Created By</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Lines</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                    <tr><td colspan="6" class="text-muted text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Order Request Modal -->
+<div id="order-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 50;">
+    <div class="card" style="width: 500px; max-width: 90vw;">
+        <h3>Place Order Request</h3>
+        <form id="order-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">
+            <div>
+                <label class="text-muted">Select Item</label>
+                <select id="order-item" required>
+                    <option value="">Select Item...</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-muted">Quantity</label>
+                <input type="number" id="order-qty" min="1" value="1" required>
+            </div>
+            <div style="display:flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                <button type="button" class="btn btn-secondary" onclick="hideOrderModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Submit Request</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadOrders();
+        
+        // Load items for the select dropdown
+        fetch('/api/items')
+            .then(r => r.json())
+            .then(data => {
+                const sel = document.getElementById('order-item');
+                data.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = `${item.sku || '-'} ${item.name}`;
+                    sel.appendChild(opt);
+                });
+            });
+            
+        document.getElementById('order-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const itemId = document.getElementById('order-item').value;
+            const qty = document.getElementById('order-qty').value;
+            
+            const payload = {
+                lines: [
+                    { item_id: itemId, qty: parseInt(qty) }
+                ]
+            };
+            
+            fetch('/api/orders', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    hideOrderModal();
+                    loadOrders();
+                } else {
+                    alert('Failed to place order.');
+                }
+            });
+        });
+    });
+
+    function loadOrders() {
+        fetch('/api/orders')
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('orders-table-body');
+                tbody.innerHTML = '';
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center">No order history found.</td></tr>';
+                    return;
+                }
+                
+                data.forEach(order => {
+                    const lineSummary = order.lines.map(l => `${l.qty || l.ordered_qty}x ${l.item_name}`).join(', ');
+                    
+                    let actionBtn = '';
+                    if(order.status !== 'RECEIVED') {
+                        actionBtn = `<button class="btn btn-secondary" style="padding:0.25rem 0.5rem; font-size:0.75rem" onclick="receiveOrder(${order.id})">Mark Received</button>`;
+                    }
+                    
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="font-weight:500;">#${order.id}</td>
+                        <td>${order.creator || 'System'}</td>
+                        <td>${order.created_at.split(' ')[0]}</td>
+                        <td>
+                            <span style="padding:0.25rem 0.5rem; border-radius:0.25rem; font-size:0.75rem; 
+                                       background-color:${order.status === 'RECEIVED' ? 'var(--secondary-color)' : 'rgba(37,99,235,0.1)'}; 
+                                       color:${order.status === 'RECEIVED' ? 'var(--text-secondary)' : 'var(--primary-color)'}">
+                                ${order.status}
+                            </span>
+                        </td>
+                        <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${lineSummary}">
+                            ${lineSummary}
+                        </td>
+                        <td>${actionBtn}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    function receiveOrder(id) {
+        if(!confirm("Mark this order as Received into inventory?")) return;
+        fetch(`/api/orders/${id}/receive`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        }).then(r => r.json()).then(data => {
+            if(data.success) {
+                loadOrders();
+            } else {
+                alert("Error receiving order: " + data.message);
+            }
+        });
+    }
+
+    function showOrderModal() { document.getElementById('order-modal').style.display = 'flex'; }
+    function hideOrderModal() { document.getElementById('order-modal').style.display = 'none'; document.getElementById('order-form').reset(); }
+</script>
+{% endblock %}

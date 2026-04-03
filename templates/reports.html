@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="dashboard-header" style="margin-bottom: 2rem;">
+    <h1>Business & Budget Analytics</h1>
+    <p class="text-muted">High-level insights designed to assist in quarterly planning and budget justification.</p>
+</div>
+
+<div class="dashboard-metrics" id="analytics-overview">
+    <!-- Populated by JS -->
+</div>
+
+<div class="dashboard-layout" style="grid-template-columns: 1fr 1fr; margin-top:2rem;">
+    <!-- Order Volume Impact -->
+    <div class="card">
+        <h3>Pending Orders Workflow</h3>
+        <p class="text-muted" style="margin-top:0.5rem; margin-bottom:1rem; font-size:0.875rem;">
+            Active requests that need to be processed or received to maintain workshop operational readiness.
+        </p>
+        <div style="font-size:3rem; font-weight:700; color:var(--primary-color);" id="pending-orders-count">
+            0
+        </div>
+        <p class="text-muted" style="margin-top:0.5rem; font-size:0.875rem;" id="pending-items-count">
+            Total items pending: 0
+        </p>
+    </div>
+    
+    <!-- System Health -->
+    <div class="card">
+        <h3>Operational Disruptions Summary</h3>
+        <p class="text-muted" style="margin-top:0.5rem; margin-bottom:1rem; font-size:0.875rem;">
+            Frequency of out-of-stock events, broken tools, or missing replacements.
+        </p>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:1rem; border-bottom:1px solid var(--border-color);">
+            <span style="font-weight:500;">Weekly Disruption Count</span>
+            <span id="rpt-disruptions" style="font-size:1.5rem; font-weight:700;">0</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:1rem;">
+            <span style="font-weight:500;">Replacement Parts Readiness</span>
+            <span id="rpt-readiness" style="font-size:1.5rem; font-weight:700; color:var(--warning-color);">0%</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // We will repurpose the /api/dashboard/metrics for now
+        // In a real iteration, we'd add an /api/reports endpoint with grouped history
+        fetch('/api/dashboard/metrics')
+            .then(r => r.json())
+            .then(data => {
+                const metricsHtml = `
+                    <div class="card">
+                        <span class="text-muted">Overall Visibility Score</span>
+                        <div class="metric-value">${data.visibility_score}<span style="font-size:1rem;">/10</span></div>
+                    </div>
+                    <div class="card">
+                        <span class="text-muted">Return Compliance</span>
+                        <div class="metric-value">${data.return_compliance}%</div>
+                    </div>
+                    <div class="card">
+                        <span class="text-muted">Labeling Coverage</span>
+                        <div class="metric-value">${data.labeling_coverage}%</div>
+                    </div>
+                `;
+                document.getElementById('analytics-overview').innerHTML = metricsHtml;
+                
+                document.getElementById('rpt-disruptions').innerText = data.disruptions;
+                document.getElementById('rpt-readiness').innerText = data.replacement_readiness + '%';
+                
+                document.getElementById('pending-orders-count').innerText = data.pending_orders;
+                document.getElementById('pending-items-count').innerText = `Total items pending: ${data.pending_items}`;
+            });
+    });
+</script>
+{% endblock %}

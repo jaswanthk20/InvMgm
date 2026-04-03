@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMERA ideaHUB Inventory</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>ideaHUB Inventory</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item">Dashboard</a>
+                <a href="{{ url_for('item_master') }}" class="nav-item">Items Master</a>
+                <a href="{{ url_for('locations_page') }}" class="nav-item">Locations</a>
+                <a href="{{ url_for('orders_page') }}" class="nav-item">Orders & Requests</a>
+                <a href="{{ url_for('reports_page') }}" class="nav-item">Reports</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="topbar">
+                <div class="topbar-search" style="position: relative;">
+                    <input type="text" placeholder="Search items or SKUs..." id="global-search" autocomplete="off">
+                    <div id="search-dropdown" style="display: none; position: absolute; top: calc(100% + 0.5rem); left: 0; width: 100%; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); z-index: 1000; max-height: 300px; overflow-y: auto;">
+                        <!-- JS injects here -->
+                    </div>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-secondary">Report Disruption</button>
+                </div>
+            </header>
+
+            <div class="content-body">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const globalSearch = document.getElementById('global-search');
+            const searchDropdown = document.getElementById('search-dropdown');
+            let globalItems = null;
+
+            if (globalSearch && searchDropdown) {
+                // Pre-fetch items when focused to make search instant
+                globalSearch.addEventListener('focus', () => {
+                    if (!globalItems) {
+                        fetch('/api/items')
+                            .then(r => r.json())
+                            .then(data => globalItems = data)
+                            .catch(err => console.error("Could not fetch items for search", err));
+                    }
+                });
+
+                globalSearch.addEventListener('input', (e) => {
+                    const q = e.target.value.trim().toLowerCase();
+                    if (!q) {
+                        searchDropdown.style.display = 'none';
+                        return;
+                    }
+                    if (globalItems) {
+                        const matches = globalItems.filter(item => 
+                            (item.name && item.name.toLowerCase().includes(q)) || 
+                            (item.sku && item.sku.toLowerCase().includes(q))
+                        ).slice(0, 8); // top 8 matches
+                        
+                        searchDropdown.innerHTML = '';
+                        if (matches.length > 0) {
+                            matches.forEach(m => {
+                                const div = document.createElement('div');
+                                div.style.padding = '0.5rem 1rem';
+                                div.style.cursor = 'pointer';
+                                div.style.borderBottom = '1px solid var(--border-color)';
+                                div.innerHTML = `<div style="font-weight:500;">${m.name}</div><div style="font-size:0.75rem; color:var(--text-muted);">${m.sku || '-'}</div>`;
+                                
+                                div.addEventListener('mouseenter', () => div.style.backgroundColor = 'rgba(0,0,0,0.05)');
+                                div.addEventListener('mouseleave', () => div.style.backgroundColor = 'transparent');
+                                div.addEventListener('click', () => {
+                                    window.location.href = `/items?q=${encodeURIComponent(m.sku || m.name)}`;
+                                });
+                                searchDropdown.appendChild(div);
+                            });
+                        } else {
+                            const div = document.createElement('div');
+                            div.style.padding = '0.5rem 1rem';
+                            div.innerHTML = '<span class="text-muted">No matching items found.</span>';
+                            searchDropdown.appendChild(div);
+                        }
+                        searchDropdown.style.display = 'block';
+                    }
+                });
+
+                // Hide dropdown when clicking elsewhere
+                document.addEventListener('click', (e) => {
+                    if (!globalSearch.contains(e.target) && !searchDropdown.contains(e.target)) {
+                        searchDropdown.style.display = 'none';
+                    }
+                });
+
+                globalSearch.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        const q = encodeURIComponent(e.target.value.trim());
+                        if (q) window.location.href = `/items?q=${q}`;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
