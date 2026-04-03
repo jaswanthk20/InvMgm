@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InvMgm — EMERA ideaHUB Inventory Management System</title>
+  <meta name="description" content="A lightweight, full-stack inventory management system purpose-built for the EMERA ideaHUB Makerspace. Track tools, consumables, and hardware in ≤ 2 clicks." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0d14;
+      --bg2:       #0f1422;
+      --bg3:       #151b2e;
+      --border:    rgba(99,179,237,0.12);
+      --accent:    #3b82f6;
+      --accent2:   #8b5cf6;
+      --accent3:   #06b6d4;
+      --green:     #10b981;
+      --amber:     #f59e0b;
+      --red:       #ef4444;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --card:      rgba(15,20,34,0.8);
+      --radius:    14px;
+      --glow:      0 0 40px rgba(59,130,246,0.15);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── ANIMATED BACKGROUND ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(59,130,246,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(139,92,246,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 50% 50%, rgba(6,182,212,0.04) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── GRID OVERLAY ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(99,179,237,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,179,237,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 100;
+      padding: 16px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(20px);
+      background: rgba(10,13,20,0.7);
+      border-bottom: 1px solid var(--border);
+      transition: background 0.3s;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .nav-logo .logo-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      box-shadow: 0 0 20px rgba(59,130,246,0.4);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 8px;
+      transition: color 0.2s, background 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+    .nav-cta {
+      background: linear-gradient(135deg, var(--accent), var(--accent2)) !important;
+      color: white !important;
+      padding: 7px 18px !important;
+      box-shadow: 0 0 20px rgba(59,130,246,0.3);
+    }
+
+    .nav-cta:hover { opacity: 0.9; box-shadow: 0 0 30px rgba(59,130,246,0.5) !important; }
+
+    /* ── SECTIONS ── */
+    section, .hero-wrap { position: relative; z-index: 1; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.25);
+      border-radius: 100px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 28px;
+      animation: fadeInDown 0.6s ease both;
+    }
+
+    .badge-dot {
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.4); }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      animation: fadeInDown 0.6s 0.1s ease both;
+    }
+
+    .hero h1 .gradient-text {
+      background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      max-width: 580px;
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-bottom: 40px;
+      line-height: 1.7;
+      animation: fadeInDown 0.6s 0.2s ease both;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 64px;
+      animation: fadeInDown 0.6s 0.3s ease both;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 26px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: all 0.25s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      box-shadow: 0 0 30px rgba(59,130,246,0.35);
+    }
+
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(59,130,246,0.5); }
+
+    .btn-ghost {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-ghost:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+
+    /* ── STATS STRIP ── */
+    .stats-strip {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 48px;
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: rgba(15,20,34,0.5);
+      animation: fadeInDown 0.6s 0.4s ease both;
+    }
+
+    .stat-item { text-align: center; }
+    .stat-item .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(135deg, var(--accent), var(--accent3));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-item .stat-label { font-size: 0.82rem; color: var(--muted); font-weight: 500; margin-top: 2px; }
+
+    /* ── SECTION HEADINGS ── */
+    .section-title {
+      text-align: center;
+      margin-bottom: 56px;
+    }
+
+    .section-title .eyebrow {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .section-title h2 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 16px;
+    }
+
+    .section-title p {
+      font-size: 1rem;
+      color: var(--muted);
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    /* ── FEATURES ── */
+    #features { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: all 0.3s;
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .feature-card:hover { transform: translateY(-4px); border-color: rgba(99,179,237,0.25); box-shadow: var(--glow); }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      margin-bottom: 18px;
+    }
+
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.02em; }
+    .feature-card p { font-size: 0.875rem; color: var(--muted); line-height: 1.65; }
+
+    /* ── MOCK DASHBOARD ── */
+    #preview { padding: 100px 24px; background: linear-gradient(180deg, transparent, var(--bg2), transparent); }
+    #preview > .section-title { max-width: 1100px; margin-left: auto; margin-right: auto; }
+
+    .mock-browser {
+      max-width: 1000px;
+      margin: 0 auto;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      box-shadow: 0 40px 120px rgba(0,0,0,0.5), var(--glow);
+      animation: float 6s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .mock-browser-bar {
+      background: var(--bg3);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .mock-dots { display: flex; gap: 6px; }
+    .mock-dots span {
+      width: 12px; height: 12px; border-radius: 50%;
+    }
+    .mock-dots span:nth-child(1) { background: #ef4444; }
+    .mock-dots span:nth-child(2) { background: #f59e0b; }
+    .mock-dots span:nth-child(3) { background: #10b981; }
+
+    .mock-url {
+      flex: 1;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .mock-screen {
+      background: #0d1117;
+      display: flex;
+      height: 480px;
+    }
+
+    .mock-sidebar {
+      width: 56px;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0;
+      gap: 16px;
+    }
+
+    .mock-sidebar-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .mock-sidebar-icon.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+
+    .mock-sidebar-icon:not(.active):hover { background: rgba(255,255,255,0.06); }
+
+    .mock-content { flex: 1; padding: 20px; overflow: hidden; }
+
+    .mock-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .mock-topbar h2 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .mock-topbar-actions { display: flex; gap: 8px; }
+
+    .mock-pill {
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.25);
+      color: var(--accent);
+    }
+
+    .mock-kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .mock-kpi {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .mock-kpi .kpi-label { font-size: 0.65rem; color: var(--muted); font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .mock-kpi .kpi-value { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.04em; }
+    .mock-kpi .kpi-sub { font-size: 0.62rem; margin-top: 4px; font-weight: 500; }
+
+    .mock-kpi.blue  .kpi-value { color: var(--accent);  }
+    .mock-kpi.amber .kpi-value { color: var(--amber);   }
+    .mock-kpi.red   .kpi-value { color: var(--red);     }
+    .mock-kpi.green .kpi-value { color: var(--green);   }
+
+    .mock-bottom-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .mock-table-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .mock-table-card .card-title { font-size: 0.72rem; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.01em; }
+
+    .mock-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 0.65rem;
+    }
+
+    .mock-row:last-child { border-bottom: none; }
+    .mock-row .item-name { color: var(--text); font-weight: 500; }
+    .mock-row .item-qty { font-weight: 700; }
+    .mock-row .item-qty.warn { color: var(--amber); }
+    .mock-row .item-qty.danger { color: var(--red); }
+    .mock-row .item-qty.ok { color: var(--green); }
+
+    .mock-tag {
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-size: 0.58rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .mock-tag.pending { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .mock-tag.received { background: rgba(16,185,129,0.15); color: var(--green); }
+
+    /* ── TECH STACK ── */
+    #stack { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .stack-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: all 0.3s;
+      backdrop-filter: blur(10px);
+    }
+
+    .stack-card:hover { transform: translateY(-3px); border-color: rgba(99,179,237,0.25); }
+
+    .stack-icon {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .stack-info h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 3px; }
+    .stack-info p  { font-size: 0.78rem; color: var(--muted); }
+
+    /* ── SETUP ── */
+    #setup { padding: 100px 24px; background: linear-gradient(180deg, transparent, var(--bg2), transparent); }
+    #setup > .container { max-width: 860px; margin: 0 auto; }
+
+    .steps { display: flex; flex-direction: column; gap: 0; position: relative; margin-top: 48px; }
+
+    .steps::before {
+      content: '';
+      position: absolute;
+      left: 22px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, var(--accent), var(--accent2), transparent);
+      border-radius: 2px;
+    }
+
+    .step {
+      display: flex;
+      gap: 24px;
+      padding-bottom: 40px;
+      position: relative;
+    }
+
+    .step-num {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(59,130,246,0.4);
+      z-index: 1;
+    }
+
+    .step-body { padding-top: 10px; }
+    .step-body h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .step-body p  { font-size: 0.875rem; color: var(--muted); margin-bottom: 10px; }
+
+    code, pre {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .code-block {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--accent3);
+      overflow-x: auto;
+      line-height: 1.8;
+    }
+
+    .code-block .prompt { color: var(--muted); user-select: none; }
+
+    /* ── API ── */
+    #api { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+
+    .api-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .api-table thead { background: var(--bg3); }
+    .api-table th {
+      padding: 14px 20px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .api-table td {
+      padding: 13px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      vertical-align: middle;
+    }
+
+    .api-table tbody tr { transition: background 0.2s; }
+    .api-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+    .api-table tbody tr:last-child td { border-bottom: none; }
+
+    .method {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .method.get    { background: rgba(16,185,129,0.15); color: var(--green); }
+    .method.post   { background: rgba(59,130,246,0.15); color: var(--accent); }
+    .method.put    { background: rgba(245,158,11,0.15); color: var(--amber); }
+    .method.delete { background: rgba(239,68,68,0.15);  color: var(--red); }
+
+    .endpoint-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: var(--text);
+    }
+
+    /* ── CTA BANNER ── */
+    #cta {
+      padding: 100px 24px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cta-box {
+      max-width: 680px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1));
+      border: 1px solid rgba(99,179,237,0.2);
+      border-radius: 24px;
+      padding: 60px 40px;
+      backdrop-filter: blur(20px);
+    }
+
+    .cta-box h2 {
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 16px;
+    }
+
+    .cta-box p { color: var(--muted); margin-bottom: 32px; font-size: 1rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 32px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      position: relative;
+      z-index: 1;
+    }
+
+    footer .footer-brand {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--text);
+    }
+
+    footer .footer-brand span { color: var(--muted); font-weight: 400; }
+
+    footer .footer-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+
+    footer .footer-links a {
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    footer .footer-links a:hover { color: var(--text); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 14px 20px; }
+      .nav-links { display: none; }
+      .mock-kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .mock-bottom-row { grid-template-columns: 1fr; }
+      footer { flex-direction: column; text-align: center; }
+      .steps::before { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="navbar">
+    <a href="#" class="nav-logo">
+      <div class="logo-icon">📦</div>
+      <span>InvMgm</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#preview">Preview</a></li>
+      <li><a href="#stack">Stack</a></li>
+      <li><a href="#setup">Setup</a></li>
+      <li><a href="#api">API</a></li>
+      <li><a href="https://github.com/jaswanthk20/InvMgm" target="_blank" rel="noopener" class="nav-cta btn">View on GitHub</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      EMERA ideaHUB &amp; Makerspace
+    </div>
+
+    <h1>
+      Inventory Control<br />
+      <span class="gradient-text">Built for Makerspaces</span>
+    </h1>
+
+    <p>
+      A full-stack inventory management prototype purpose-built for the operational needs of a makerspace. Track tools, consumables, and hardware — most stock transactions complete in <strong style="color:var(--text)">≤ 2 clicks</strong>.
+    </p>
+
+    <div class="hero-buttons">
+      <a href="https://github.com/jaswanthk20/InvMgm" target="_blank" rel="noopener" class="btn btn-primary" id="btn-github">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        View on GitHub
+      </a>
+      <a href="#setup" class="btn btn-ghost" id="btn-setup">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 19,12 5,21 5,3"/></svg>
+        Get Started
+      </a>
+    </div>
+
+    <!-- Tech Badges -->
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;animation:fadeInDown 0.6s 0.5s ease both">
+      <img src="https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white&style=flat-square" alt="Python" />
+      <img src="https://img.shields.io/badge/Flask-3.0.3-lightgrey?logo=flask&style=flat-square" alt="Flask" />
+      <img src="https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white&style=flat-square" alt="SQLite" />
+      <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
+      <img src="https://img.shields.io/badge/Status-Prototype-orange?style=flat-square" alt="Status" />
+    </div>
+  </section>
+
+  <!-- STATS STRIP -->
+  <div class="stats-strip reveal">
+    <div class="stat-item">
+      <div class="stat-value">≤ 2</div>
+      <div class="stat-label">Clicks per transaction</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">5</div>
+      <div class="stat-label">Core pages</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Frontend frameworks</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-value">100%</div>
+      <div class="stat-label">Audit trail coverage</div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="section-title reveal">
+      <span class="eyebrow">Features</span>
+      <h2>Everything a makerspace needs</h2>
+      <p>Built lean with no over-engineering. Every feature solves a real operational problem.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card reveal">
+        <div class="feature-icon" style="background:rgba(59,130,246,0.12);">🏠</div>
+        <h3>Real-Time Dashboard KPIs</h3>
+        <p>Out-of-stock counts, low-stock alerts, open purchase orders, and weekly stock movements — all visible on first load with no page reloads.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon" style="background:rgba(16,185,129,0.12);">⚡</div>
+        <h3>Quick Transactions (≤ 2 Clicks)</h3>
+        <p>Submit IN or OUT stock adjustments from the main dashboard without navigating away. A modal captures item, location, quantity, and movement type.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon" style="background:rgba(139,92,246,0.12);">📦</div>
+        <h3>Item Master List</h3>
+        <p>Add, edit, or deactivate items. Dual-layer filtering: free-text search combined with a live-generated category dropdown derived from actual data — no hardcoded lists.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon" style="background:rgba(6,182,212,0.12);">📥</div>
+        <h3>Bulk CSV / Excel Import</h3>
+        <p>Drag-and-drop upload on the Items page. Automatically detects and skips duplicate SKUs, mapping spreadsheet columns to the item master schema.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon" style="background:rgba(245,158,11,0.12);">🛒</div>
+        <h3>Purchase Orders &amp; Receiving</h3>
+        <p>Create order requests per item. Items enter PENDING state and surface on the dashboard. Mark as Received to close the order and auto-trigger a stock IN movement.</p>
+      </div>
+
+      <div class="feature-card reveal">
+        <div class="feature-icon" style="background:rgba(239,68,68,0.12);">📋</div>
+        <h3>Append-Only Audit Ledger</h3>
+        <p>Every stock movement is written to the stock_movements table. Records are never deleted or updated — providing a full, tamper-proof paper trail.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MOCK PREVIEW -->
+  <section id="preview">
+    <div class="section-title reveal">
+      <span class="eyebrow">App Preview</span>
+      <h2>Clean, fast, and focused UI</h2>
+      <p>Designed for speed. Built with Vanilla CSS and native Fetch API — no build step required.</p>
+    </div>
+
+    <div class="mock-browser reveal">
+      <div class="mock-browser-bar">
+        <div class="mock-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="mock-url">localhost:5000 — EMERA ideaHUB Inventory</div>
+      </div>
+
+      <div class="mock-screen">
+        <!-- Sidebar -->
+        <div class="mock-sidebar">
+          <div class="mock-sidebar-icon active" title="Dashboard">🏠</div>
+          <div class="mock-sidebar-icon" title="Items">📦</div>
+          <div class="mock-sidebar-icon" title="Locations">📍</div>
+          <div class="mock-sidebar-icon" title="Orders">🛒</div>
+          <div class="mock-sidebar-icon" title="Reports">📊</div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="mock-content">
+          <div class="mock-topbar">
+            <h2>Dashboard</h2>
+            <div class="mock-topbar-actions">
+              <div class="mock-pill">+ Quick Transaction</div>
+            </div>
+          </div>
+
+          <!-- KPI Row -->
+          <div class="mock-kpi-row">
+            <div class="mock-kpi red">
+              <div class="kpi-label">Out of Stock</div>
+              <div class="kpi-value">3</div>
+              <div class="kpi-sub" style="color:var(--red)">▲ needs reorder</div>
+            </div>
+            <div class="mock-kpi amber">
+              <div class="kpi-label">Low Stock</div>
+              <div class="kpi-value">7</div>
+              <div class="kpi-sub" style="color:var(--amber)">below min threshold</div>
+            </div>
+            <div class="mock-kpi blue">
+              <div class="kpi-label">Open POs</div>
+              <div class="kpi-value">4</div>
+              <div class="kpi-sub" style="color:var(--accent)">pending receipt</div>
+            </div>
+            <div class="mock-kpi green">
+              <div class="kpi-label">Weekly Movements</div>
+              <div class="kpi-value">42</div>
+              <div class="kpi-sub" style="color:var(--green)">last 7 days</div>
+            </div>
+          </div>
+
+          <!-- Bottom Row -->
+          <div class="mock-bottom-row">
+            <div class="mock-table-card">
+              <div class="card-title">🔴 Low Stock Alerts</div>
+              <div class="mock-row">
+                <span class="item-name">M3 Hex Bolts</span>
+                <span class="item-qty danger">2 left</span>
+              </div>
+              <div class="mock-row">
+                <span class="item-name">Solder Wire 60/40</span>
+                <span class="item-qty warn">5 left</span>
+              </div>
+              <div class="mock-row">
+                <span class="item-name">PLA Filament 1.75mm</span>
+                <span class="item-qty warn">1 roll</span>
+              </div>
+              <div class="mock-row">
+                <span class="item-name">AA Batteries (pk/4)</span>
+                <span class="item-qty danger">0 left</span>
+              </div>
+            </div>
+
+            <div class="mock-table-card">
+              <div class="card-title">🛒 Open Purchase Orders</div>
+              <div class="mock-row">
+                <span class="item-name">M3 Hex Bolts ×100</span>
+                <span class="mock-tag pending">Pending</span>
+              </div>
+              <div class="mock-row">
+                <span class="item-name">Arduino Nano ×10</span>
+                <span class="mock-tag pending">Pending</span>
+              </div>
+              <div class="mock-row">
+                <span class="item-name">Safety Glasses ×20</span>
+                <span class="mock-tag received">Received</span>
+              </div>
+              <div class="mock-row">
+                <span class="item-name">Heat Shrink Tubes</span>
+                <span class="mock-tag pending">Pending</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK -->
+  <section id="stack">
+    <div class="section-title reveal">
+      <span class="eyebrow">Tech Stack</span>
+      <h2>Simple, robust, dependency-light</h2>
+      <p>No frameworks, no build pipelines. Just Python, HTML, CSS, and JS.</p>
+    </div>
+
+    <div class="stack-grid">
+      <div class="stack-card reveal">
+        <div class="stack-icon">🐍</div>
+        <div class="stack-info">
+          <h4>Python 3.10+</h4>
+          <p>Core language and runtime</p>
+        </div>
+      </div>
+      <div class="stack-card reveal">
+        <div class="stack-icon">🌶️</div>
+        <div class="stack-info">
+          <h4>Flask 3.0.3</h4>
+          <p>REST API + server-side template rendering</p>
+        </div>
+      </div>
+      <div class="stack-card reveal">
+        <div class="stack-icon">🗄️</div>
+        <div class="stack-info">
+          <h4>SQLite</h4>
+          <p>Embedded DB with CHECK constraints &amp; DDL compatible with PostgreSQL</p>
+        </div>
+      </div>
+      <div class="stack-card reveal">
+        <div class="stack-icon">🎨</div>
+        <div class="stack-info">
+          <h4>Vanilla CSS + JS</h4>
+          <p>No build step — native Fetch API for async mutations</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETUP STEPS -->
+  <section id="setup">
+    <div class="container">
+      <div class="section-title reveal">
+        <span class="eyebrow">Getting Started</span>
+        <h2>Up and running in minutes</h2>
+        <p>No Docker, no cloud accounts, no build step. Just Python and pip.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step reveal">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Clone the repository</h3>
+            <p>Get the source code onto your machine.</p>
+            <div class="code-block">
+              <span class="prompt">$ </span>git clone https://github.com/jaswanthk20/InvMgm.git<br/>
+              <span class="prompt">$ </span>cd InvMgm
+            </div>
+          </div>
+        </div>
+
+        <div class="step reveal">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Create a virtual environment</h3>
+            <p>Isolate dependencies from your system Python.</p>
+            <div class="code-block">
+              <span class="prompt">$ </span>python -m venv venv<br/>
+              <span class="prompt">$ </span>venv\Scripts\activate
+            </div>
+          </div>
+        </div>
+
+        <div class="step reveal">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Install dependencies</h3>
+            <p>All packages listed in <code>requirements.txt</code>.</p>
+            <div class="code-block">
+              <span class="prompt">$ </span>pip install -r requirements.txt
+            </div>
+          </div>
+        </div>
+
+        <div class="step reveal">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h3>Initialize the database</h3>
+            <p>Creates <code>database.db</code> by executing <code>schema.sql</code>.</p>
+            <div class="code-block">
+              <span class="prompt">$ </span>flask --app app init-db
+            </div>
+          </div>
+        </div>
+
+        <div class="step reveal">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h3>(Optional) Seed sample data</h3>
+            <p>Populate with realistic locations, items, and metric logs.</p>
+            <div class="code-block">
+              <span class="prompt">$ </span>python seed_data.py
+            </div>
+          </div>
+        </div>
+
+        <div class="step reveal">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h3>Start the development server</h3>
+            <p>Open <strong>http://localhost:5000</strong> in your browser.</p>
+            <div class="code-block">
+              <span class="prompt">$ </span>flask --app app run --port 5000
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- API REFERENCE -->
+  <section id="api">
+    <div class="section-title reveal">
+      <span class="eyebrow">API Reference</span>
+      <h2>Clean REST endpoints</h2>
+      <p>All endpoints return JSON. Base URL: <code style="color:var(--accent3)">http://localhost:5000</code></p>
+    </div>
+
+    <div class="reveal">
+      <table class="api-table">
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Endpoint</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><span class="endpoint-path">/api/items</span></td>
+            <td>List all items</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><span class="endpoint-path">/api/items</span></td>
+            <td>Create a new item</td>
+          </tr>
+          <tr>
+            <td><span class="method put">PUT</span></td>
+            <td><span class="endpoint-path">/api/items/&lt;id&gt;</span></td>
+            <td>Update an existing item</td>
+          </tr>
+          <tr>
+            <td><span class="method delete">DELETE</span></td>
+            <td><span class="endpoint-path">/api/items/&lt;id&gt;</span></td>
+            <td>Remove an item</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><span class="endpoint-path">/api/locations</span></td>
+            <td>List all locations</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><span class="endpoint-path">/api/locations</span></td>
+            <td>Create a new location</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><span class="endpoint-path">/api/transactions</span></td>
+            <td>Log a stock IN / OUT / MOVE</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><span class="endpoint-path">/api/dashboard/metrics</span></td>
+            <td>Returns KPI counts (low stock, open POs, weekly movements)</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><span class="endpoint-path">/api/dashboard/low-stock</span></td>
+            <td>Returns items below their min_stock threshold</td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><span class="endpoint-path">/api/orders</span></td>
+            <td>List all purchase orders</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><span class="endpoint-path">/api/orders</span></td>
+            <td>Create a new purchase order</td>
+          </tr>
+          <tr>
+            <td><span class="method put">PUT</span></td>
+            <td><span class="endpoint-path">/api/orders/&lt;id&gt;/receive</span></td>
+            <td>Mark as received — triggers stock IN automatically</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><span class="endpoint-path">/api/import</span></td>
+            <td>Upload CSV or Excel file for bulk item registration</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="cta">
+    <div class="cta-box reveal">
+      <h2>Ready to deploy?</h2>
+      <p>Clone the repo, run 6 commands, and your makerspace inventory is live in minutes.</p>
+      <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+        <a href="https://github.com/jaswanthk20/InvMgm" target="_blank" rel="noopener" class="btn btn-primary" id="btn-cta-github">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.59 9.59 0 0 1 2.504.337c1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.02 10.02 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          View on GitHub
+        </a>
+        <a href="docs/User_Guide.md" class="btn btn-ghost" id="btn-cta-docs">
+          📖 Read the User Guide
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-brand">
+      InvMgm <span>— Built for EMERA ideaHUB &amp; Makerspace · S2 Integrators LLC</span>
+    </div>
+    <ul class="footer-links">
+      <li><a href="https://github.com/jaswanthk20/InvMgm" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="docs/Project_Overview.md">Docs</a></li>
+      <li><a href="docs/User_Guide.md">User Guide</a></li>
+      <li><a href="README.md">README</a></li>
+    </ul>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
+      { threshold: 0.12 }
+    );
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+    // Nav shadow on scroll
+    const nav = document.getElementById('navbar');
+    window.addEventListener('scroll', () => {
+      nav.style.background = window.scrollY > 20
+        ? 'rgba(10,13,20,0.95)'
+        : 'rgba(10,13,20,0.7)';
+    });
+  </script>
+</body>
+</html>
