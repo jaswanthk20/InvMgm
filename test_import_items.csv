@@ -1,0 +1,5 @@
+sku,name,category,unit,reorder_point,min_stock
+TST-001,Power Drill 20V,Tools,pcs,2,5
+TST-002,Titanium Drill Bit Set,Accessories,box,5,10
+TST-003,Safety Goggles,Safety,pcs,10,20
+TST-004,Heavy Duty Work Gloves,Safety,pairs,15,30

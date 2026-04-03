@@ -13,7 +13,8 @@
             <select id="category-filter" style="width: auto;">
                 <option value="">All Categories</option>
             </select>
-            <button class="btn btn-secondary">Export</button>
+            <input type="file" id="import-file-input" accept=".csv, .xlsx, .xls" style="display: none;">
+            <button class="btn btn-secondary" onclick="document.getElementById('import-file-input').click()">Import CSV/Excel</button>
         </div>
     </div>
     
@@ -37,8 +38,9 @@
 <!-- Simple Add Item Modal structure (hidden by default) -->
 <div id="add-item-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 50;">
     <div class="card" style="width: 500px; max-width: 90vw;">
-        <h3>Add New Item</h3>
+        <h3 id="modal-title">Add New Item</h3>
         <form id="add-item-form" style="display:flex; flex-direction:column; gap: 1rem; margin-top: 1rem;">
+            <input type="hidden" id="edit-item-id" value="">
             <div>
                 <label class="text-muted">SKU</label>
                 <input type="text" id="new-item-sku">
@@ -79,17 +81,25 @@
         if (q) {
             searchInput.value = q;
         }
-        
-        searchInput.addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase();
+        function filterItems() {
+            const term = searchInput.value.toLowerCase();
+            const catFilter = document.getElementById('category-filter').value;
             const rows = document.querySelectorAll('#items-table-body tr');
             rows.forEach(row => {
                 if (row.children.length > 1) {
                     const text = row.innerText.toLowerCase();
-                    row.style.display = text.includes(term) ? '' : 'none';
+                    const categoryCell = row.children[2].innerText;
+                    
+                    const matchesSearch = text.includes(term);
+                    const matchesCat = (catFilter === "" || categoryCell === catFilter);
+                    
+                    row.style.display = (matchesSearch && matchesCat) ? '' : 'none';
                 }
             });
-        });
+        }
+        
+        searchInput.addEventListener('input', filterItems);
+        document.getElementById('category-filter').addEventListener('change', filterItems);
         
         document.getElementById('add-item-form').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -101,8 +111,12 @@
                 reorder_point: parseInt(document.getElementById('new-item-reorder').value || 0)
             };
             
-            fetch('/api/items', {
-                method: 'POST',
+            const editId = document.getElementById('edit-item-id').value;
+            const url = editId ? `/api/items/${editId}` : '/api/items';
+            const method = editId ? 'PUT' : 'POST';
+            
+            fetch(url, {
+                method: method,
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(payload)
             })
@@ -112,10 +126,42 @@
                     hideAddItemModal();
                     loadItems();
                 } else {
-                    alert('Failed to add item');
+                    alert('Failed to save item: ' + (data.message || ''));
                 }
             })
             .catch(err => alert("Error: " + err));
+        });
+        
+        document.getElementById('import-file-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            document.getElementById('items-table-body').innerHTML = '<tr><td colspan="6" class="text-muted text-center">Importing items... This may take a moment.</td></tr>';
+            
+            fetch('/api/items/import', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if(data.success) {
+                    alert(`Successfully imported ${data.items_processed} items.`);
+                    loadItems();
+                } else {
+                    alert(`Import failed: ${data.message}`);
+                    loadItems();
+                }
+            })
+            .catch(err => {
+                alert(`Error occurred during import: ${err}`);
+                loadItems();
+            });
+            
+            // Clear input so same file can be selected again
+            e.target.value = '';
         });
     });
 
@@ -131,7 +177,10 @@
                     return;
                 }
                 
+                const categories = new Set();
                 data.forEach(item => {
+                    if(item.category_name) categories.add(item.category_name);
+                    
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${item.sku || '-'}</td>
@@ -140,11 +189,26 @@
                         <td>${item.reorder_point}</td>
                         <td>0 ${item.unit}</td>
                         <td>
-                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Edit</button>
+                            <button class="btn btn-secondary edit-btn" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Edit</button>
                         </td>
                     `;
+                    const editBtn = tr.querySelector('.edit-btn');
+                    editBtn.onclick = () => showEditItemModal(item.id, item.sku || '', item.name || '', item.unit || 'pcs', item.min_stock || 0, item.reorder_point || 0);
+                    
                     tbody.appendChild(tr);
                 });
+                
+                // Update category dropdown
+                const catSelect = document.getElementById('category-filter');
+                const currVal = catSelect.value;
+                catSelect.innerHTML = '<option value="">All Categories</option>';
+                categories.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c;
+                    opt.textContent = c;
+                    catSelect.appendChild(opt);
+                });
+                catSelect.value = currVal;  // Restore user selection if any
                 
                 // Trigger filter after rendering
                 const searchInput = document.getElementById('item-search');
@@ -158,6 +222,20 @@
     }
 
     function showAddItemModal() {
+        document.getElementById('modal-title').innerText = 'Add New Item';
+        document.getElementById('edit-item-id').value = '';
+        document.getElementById('add-item-form').reset();
+        document.getElementById('add-item-modal').style.display = 'flex';
+    }
+    
+    function showEditItemModal(id, sku, name, unit, min, reorder) {
+        document.getElementById('modal-title').innerText = 'Edit Item';
+        document.getElementById('edit-item-id').value = id;
+        document.getElementById('new-item-sku').value = sku;
+        document.getElementById('new-item-name').value = name;
+        document.getElementById('new-item-unit').value = unit;
+        document.getElementById('new-item-min').value = min;
+        document.getElementById('new-item-reorder').value = reorder;
         document.getElementById('add-item-modal').style.display = 'flex';
     }
     

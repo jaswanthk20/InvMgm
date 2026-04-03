@@ -2,6 +2,7 @@ import os
 from flask import Flask, jsonify, request, render_template
 import sqlite3
 from db import get_db, close_connection, init_db
+import pandas as pd
 
 app = Flask(__name__)
 # Clean up DB connections after each request
@@ -59,6 +60,93 @@ def handle_items():
         ))
         db.commit()
         return jsonify({"success": True, "id": cur.lastrowid})
+
+@app.route('/api/items/<int:item_id>', methods=['PUT'])
+def edit_item(item_id):
+    data = request.json
+    db = get_db()
+    try:
+        cur = db.cursor()
+        cur.execute('''
+            UPDATE items 
+            SET sku = ?, name = ?, unit = ?, reorder_point = ?, min_stock = ?
+            WHERE id = ?
+        ''', (
+            data.get('sku'), data.get('name'),
+            data.get('unit', 'pcs'), data.get('reorder_point', 0),
+            data.get('min_stock', 0), item_id
+        ))
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "message": str(e)}), 400
+
+@app.route('/api/items/import', methods=['POST'])
+def import_items_file():
+    if 'file' not in request.files:
+         return jsonify({"success": False, "message": "No file uploaded"}), 400
+    file = request.files['file']
+    if file.filename == '':
+         return jsonify({"success": False, "message": "No file selected"}), 400
+    
+    ext = file.filename.lower().split('.')[-1]
+    if ext not in ['csv', 'xlsx', 'xls']:
+         return jsonify({"success": False, "message": "Must be a CSV or Excel file"}), 400
+
+    try:
+         if ext == 'csv':
+             df = pd.read_csv(file)
+         else:
+             df = pd.read_excel(file)
+             
+         df.columns = [str(c).strip().lower() for c in df.columns]
+         
+         if 'name' not in df.columns:
+             return jsonify({"success": False, "message": "File must contain a 'name' column"}), 400
+             
+         db = get_db()
+         cur = db.cursor()
+         
+         added_count = 0
+         for _, row in df.iterrows():
+             name = str(row.get('name', '')).strip()
+             if not name or name == 'nan':
+                 continue
+             
+             sku = str(row.get('sku', '')).strip()
+             if sku == 'nan' or not sku: 
+                 sku = None
+             
+             unit = str(row.get('unit', 'pcs')).strip()
+             if unit == 'nan' or not unit: 
+                 unit = 'pcs'
+             
+             reorder = row.get('reorder_point', 0)
+             try: reorder = int(reorder) 
+             except: reorder = 0
+             
+             min_st = row.get('min_stock', 0)
+             try: min_st = int(min_st)
+             except: min_st = 0
+             
+             if sku:
+                 existing = cur.execute('SELECT id FROM items WHERE sku = ?', (sku,)).fetchone()
+                 if existing:
+                     # For prototype, skip existing items to avoid IntegrityError
+                     continue 
+             
+             cur.execute('''
+                 INSERT INTO items (sku, name, unit, reorder_point, min_stock)
+                 VALUES (?, ?, ?, ?, ?)
+             ''', (sku, name, unit, reorder, min_st))
+             added_count += 1
+             
+         db.commit()
+         return jsonify({"success": True, "items_processed": added_count})
+    except Exception as e:
+         return jsonify({"success": False, "message": f"Error parsing file: {str(e)}"}), 400
+
 
 @app.route('/api/locations', methods=['GET', 'POST'])
 def handle_locations():
