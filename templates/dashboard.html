@@ -7,24 +7,24 @@
 
 <div class="dashboard-metrics">
     <div class="card metric-card">
-        <span class="text-muted">Visibility Score</span>
-        <div class="metric-value">0<span style="font-size:1rem;color:var(--text-secondary)">/10</span></div>
-        <span class="metric-trend">Needs improvement</span>
-    </div>
-    <div class="card metric-card">
-        <span class="text-muted">Disruptions / Wk</span>
-        <div class="metric-value">12</div>
-        <span class="metric-trend text-danger">High disruption rate</span>
-    </div>
-    <div class="card metric-card">
-        <span class="text-muted">Pending Orders</span>
+        <span class="text-muted">Purchase Orders Open</span>
         <div class="metric-value" id="dash-pending-orders">0</div>
-        <span class="metric-trend">Awaiting receipt</span>
+        <span class="metric-trend">Not fully received</span>
     </div>
     <div class="card metric-card">
-        <span class="text-muted">Labeling Coverage</span>
-        <div class="metric-value">5%</div>
-        <span class="metric-trend">Goal: 50%</span>
+        <span class="text-muted">Low Stock Items</span>
+        <div class="metric-value" id="dash-low-stock">0</div>
+        <span class="metric-trend">Critically low</span>
+    </div>
+    <div class="card metric-card">
+        <span class="text-muted">Out of Stock</span>
+        <div class="metric-value" id="dash-out-of-stock">0</div>
+        <span class="metric-trend">Depleted Items</span>
+    </div>
+    <div class="card metric-card">
+        <span class="text-muted">Weekly Movements</span>
+        <div class="metric-value" id="dash-weekly-movements">0</div>
+        <span class="metric-trend">Activity last 7 days</span>
     </div>
 </div>
 
@@ -180,21 +180,17 @@
         fetch('/api/dashboard/metrics')
             .then(r => r.json())
             .then(data => {
-                const cards = document.querySelectorAll('.metric-card');
+                document.getElementById('dash-pending-orders').innerText = data.pending_orders || 0;
                 
-                // Visibility Score
-                cards[0].querySelector('.metric-value').innerHTML = `${data.visibility_score}<span style="font-size:1rem;color:var(--text-secondary)">/10</span>`;
+                const lowStockVal = document.getElementById('dash-low-stock');
+                lowStockVal.innerText = data.low_stock_items || 0;
+                if(data.low_stock_items > 0) lowStockVal.style.color = 'var(--danger-color)';
                 
-                // Disruptions
-                cards[1].querySelector('.metric-value').innerText = data.disruptions;
-                if(data.disruptions > 5) cards[1].querySelector('.metric-trend').className = 'metric-trend text-danger';
-                else cards[1].querySelector('.metric-trend').className = 'metric-trend text-muted';
+                const outOfStockVal = document.getElementById('dash-out-of-stock');
+                outOfStockVal.innerText = data.out_of_stock_items || 0;
+                if(data.out_of_stock_items > 0) outOfStockVal.style.color = 'var(--danger-color)';
                 
-                // Pending Orders
-                cards[2].querySelector('.metric-value').innerText = data.pending_orders;
-                
-                // Labeling
-                cards[3].querySelector('.metric-value').innerText = `${data.labeling_coverage}%`;
+                document.getElementById('dash-weekly-movements').innerText = data.weekly_movements || 0;
             })
             .catch(err => console.log('Metrics error', err));
             

@@ -267,53 +267,40 @@ def get_low_stock():
 @app.route('/api/dashboard/metrics', methods=['GET'])
 def get_dashboard_metrics():
     db = get_db()
-    # Disruptions past 7 days
-    disruptions = db.execute("SELECT COUNT(*) as c FROM disruptions_log WHERE timestamp >= datetime('now', '-7 days')").fetchone()['c']
     
-    # Avg search time past 7 days
-    avg_search = db.execute("SELECT AVG(search_duration_minutes) as m FROM search_time_log WHERE timestamp >= datetime('now', '-7 days')").fetchone()['m'] or 0
-    
-    # Return compliance %
-    total_returns = db.execute("SELECT COUNT(*) as c FROM return_audit_log").fetchone()['c']
-    returns_pct = 100
-    if total_returns > 0:
-        correct_returns = db.execute("SELECT COUNT(*) as c FROM return_audit_log WHERE returned_to_correct_location = 1").fetchone()['c']
-        returns_pct = (correct_returns / total_returns) * 100
-
-    # Labeling coverage %
-    total_locs = db.execute("SELECT COUNT(*) as c FROM locations").fetchone()['c']
-    label_pct = 0
-    if total_locs > 0:
-        labeled_locs = db.execute("SELECT COUNT(*) as c FROM locations WHERE is_labeled = 1").fetchone()['c']
-        label_pct = (labeled_locs / total_locs) * 100
-
-    # Visibility score (Removed search penalty)
-    visibility_score = ((label_pct * 0.5) + (returns_pct * 0.5)) / 10
-
-    # Pending Orders Count
+    # Pending Orders
     pending_orders = db.execute("SELECT COUNT(*) as c FROM purchase_orders WHERE status = 'ORDERED'").fetchone()['c']
-    pending_items = db.execute("SELECT COALESCE(SUM(ordered_qty), 0) as total FROM purchase_order_lines jl JOIN purchase_orders p ON jl.po_id = p.id WHERE p.status = 'ORDERED'").fetchone()['total']
-
-    # Replacement Readiness
-    replacement_items = db.execute("SELECT id, min_stock FROM items WHERE is_replacement_part = 1").fetchall()
-    readiness_pct = 100
-    if replacement_items:
-        ready_count = 0
-        for r_item in replacement_items:
-            stock = db.execute("SELECT SUM(quantity) as q FROM stock_on_hand WHERE item_id = ?", (r_item['id'],)).fetchone()['q'] or 0
-            if stock >= r_item['min_stock']:
-                ready_count += 1
-        readiness_pct = (ready_count / len(replacement_items)) * 100
+    
+    # Low Stock Items
+    low_stock_items_query = db.execute('''
+        SELECT COUNT(*) as c FROM (
+            SELECT i.id
+            FROM items i
+            LEFT JOIN stock_on_hand s ON i.id = s.item_id
+            GROUP BY i.id
+            HAVING COALESCE(SUM(s.quantity), 0) <= i.min_stock
+        )
+    ''').fetchone()['c']
+    
+    # Out of Stock Items (Stock exactly 0)
+    out_of_stock_query = db.execute('''
+        SELECT COUNT(*) as c FROM (
+            SELECT i.id
+            FROM items i
+            LEFT JOIN stock_on_hand s ON i.id = s.item_id
+            GROUP BY i.id
+            HAVING COALESCE(SUM(s.quantity), 0) = 0
+        )
+    ''').fetchone()['c']
+    
+    # Weekly Movements
+    weekly_movements = db.execute("SELECT COUNT(*) as c FROM stock_movements WHERE timestamp >= datetime('now', '-7 days')").fetchone()['c']
 
     return jsonify({
-        "disruptions": disruptions,
-        "avg_search_time": round(avg_search, 1),
-        "return_compliance": round(returns_pct, 1),
-        "labeling_coverage": round(label_pct, 1),
-        "visibility_score": round(visibility_score, 1),
-        "replacement_readiness": round(readiness_pct, 1),
         "pending_orders": pending_orders,
-        "pending_items": pending_items
+        "low_stock_items": low_stock_items_query,
+        "out_of_stock_items": out_of_stock_query,
+        "weekly_movements": weekly_movements
     })
 
 @app.route('/api/orders', methods=['GET', 'POST'])
@@ -373,7 +360,7 @@ def receive_order(po_id):
         # Determine the default receiving location (e.g. ID 1, or skip and just add to stock without a specific location for simple prototype)
         # For prototype rigor, let's insert into `stock_movements` as from_location NULL (supplier), to_location 1.
         # Ensure a default location exists first? We'll rely on the user passing 'receive_location_id' in body.
-        data = request.json or {}
+        data = request.get_json(silent=True) or {}
         recv_loc = data.get('receive_location_id', 1) 
         
         for line in lines:

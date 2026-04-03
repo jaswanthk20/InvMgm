@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS items (
     unit VARCHAR(20) NOT NULL, -- e.g., 'pcs', 'boxes', 'meters'
     reorder_point INTEGER DEFAULT 0,
     min_stock INTEGER DEFAULT 0,
+    unit_cost DECIMAL(10, 2) DEFAULT 0.00,
     is_replacement_part BOOLEAN DEFAULT 0,
     machine_asset_id INTEGER REFERENCES machine_assets(id),
     replenishment_frequency VARCHAR(50), -- e.g., 'quarterly', 'yearly'

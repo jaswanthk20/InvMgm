@@ -142,7 +142,8 @@
         if(!confirm("Mark this order as Received into inventory?")) return;
         fetch(`/api/orders/${id}/receive`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'}
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({})
         }).then(r => r.json()).then(data => {
             if(data.success) {
                 loadOrders();
