@@ -61,7 +61,9 @@ Then, point a browser to `http://localhost:5000`.
 ---
 
 ## Features
-* **Inventory Visibility Score**: An autonomous equation `( (Labeling % * 0.3) + (Returns % * 0.3) + (100 - Avg Search Delay % * 0.4) ) / 10`.
+* **Operational Dashboard Metrics**: High-level, zero-fluff dashboard presenting critical numbers: Depleted Stock, Low Stock limits, Open Purchase Orders, and Weekly internal transaction volumes.
 * **Zero Negative Stock**: Protected strictly at the SQLite DB level, we only utilize append-only movement ledgers.
+* **Bulk Item Registration**: A rapid, robust `pandas` powered CSV/Excel bulk upload ingestor supporting collision prevention for duplicate SKUs.
 * **Frictionless UI Interface**: Users can submit an `IN` or `OUT` stock switch from the central dashboard without changing URLs within 2 clicks.
 * **Amazon Replenishment**: Native CSV mapping capabilities.
+* **Live Dual-Layer Filtering**: Combine Text-based search and fully native generated Category dropdowns simultaneously to find items out of hundreds.

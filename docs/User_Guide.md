@@ -1,59 +1,41 @@
 # User Guide
 
-Welcome to the Inventory Management System. This guide will help you manage your workshop inventory effectively.
+Welcome to the EMERA ideaHUB Inventory Management System. This guide will clarify how to utilize the prototype functionality.
 
 ## Getting Started
 
-1.  **Open the App**: Navigate to [http://localhost:8000](http://localhost:8000) in your browser.
-2.  **Dashboard**: The initial view shows a dashboard with:
-    -   **Low Stock Alerts**: Items that are running low and need reordering.
-    -   **Recent Activity**: The latest inventory changes.
+1.  **Open the App**: Once the app is running in the background via `python app.py` or the `flask` command, point your browser to [http://localhost:5000](http://localhost:5000).
+2.  **Dashboard Hub**: The initial view shows a quick-glimpse operational dashboard presenting:
+    -   **Out of Stock & Low Stock**: Actionable flags ensuring critical shop tools are resupplied.
+    -   **Weekly Movements**: An indicator of how aggressively the space was engaged in the last 7 days.
+    -   **Quick Transactions**: Add or remove stock directly from any listed Location immediately upon log in.
 
-## Managing Setup Data
+## Managing the Item Catalog
 
-Before adding items, you need to define your Workshops and Categories.
+Instead of defining categories individually by hand manually, categories are organically populated from your tool listings.
 
-### Adding a Workshop
-1.  Go to the **Workshops** tab (if available in UI layout) or ensure at least one workshop exists.
-2.  (Implementation detail: currently managed via API or initial setup, UI controls to be confirmed).
+### Bulk Import Items via Spreadsheets
+1. Navigated to **Items Master** via the sidebar.
+2. Click the **Import CSV/Excel** button.
+3. Your provided file will be heavily scrubbed for duplicate SKUs saving hours of data entry and syncing directly to the SQLite databases.
 
-### Adding a Category
-1.  Define categories like "Power Tools", "Hand Tools", "Consumables" to organize your items.
+### Updating or Adding an Individual Item
+1. Click the **+ Add New Item** component.
+2. Fill out thresholds like `Min Stock` limitations. 
+3. If an item needs to be updated with a new name, simply click the **Edit** button generated inside the data grid to launch the edit experience. The UI maps changes synchronously to the database in real-time.
 
-## Managing Inventory
+### Multi-Filter Finding
+If the database climbs to hundreds of tools:
+1. Utilize the text search bar to type tool specifics (e.g., `Drill`).
+2. Utilize the adjacent dropdown category menu (which crawls all live available items) to filter to specific tool groups (e.g., `Power Tools`). Both elements synergize to lock onto tools instantly.
 
-### Adding a New Item
-1.  Click the **"Add Item"** button.
-2.  Fill in the details:
-    -   **Name**: e.g., "Drill Bit 5mm".
-    -   **Description**: e.g., "Cobalt steel for metal".
-    -   **Category**: Select from the list.
-    -   **Workshop**: Select where it is stored.
-    -   **Initial Quantity**: Current count.
-    -   **Min Quantity**: When stock drops below this, you'll get an alert.
-3.  Click **Save**.
+## Purchase Order Workflows
 
-### Updating Stock (Check-in / Check-out)
-1.  Find the item in the inventory list.
-2.  **To Remove Stock**: Click the **"-"** button. Enter the amount to remove and the reason (e.g., "Used for Project X").
-3.  **To Add Stock**: Click the **"+"** button. Enter the amount to add and the reason (e.g., "Restock").
-4.  The system automatically logs this transaction and updates the quantity.
+### Making a Request
+1. Transition to the **Orders & Requests** page.
+2. Form a new Order Request noting the target item id and volume requirement.
+3. When requested, the item drops into a `PENDING` transaction block on the dashboard.
 
-### Deleting an Item
-1.  Find the item.
-2.  Click the **Delete** (Trash icon) button.
-3.  Confirm the action. **Warning**: This action cannot be undone.
-
-## Orders
-
-### Placing an Order
-1.  Identified a low-stock item?
-2.  Go to the **Orders** section.
-3.  Create a new order for the specific Item and Quantity.
-4.  The order status will be "Pending".
-
-### Completing an Order
-1.  When the shipment arrives:
-2.  Find the pending order.
-3.  Mark it as **Complete**.
-4.  **Note**: This does NOT automatically add stock to the item (depending on current implementation logic, manual stock update might be needed - check specific business rule). *Self-correction: API currently just marks complete. User should manually add stock via the "+" button when receiving items.*
+### Fulfilling Orders
+1. Once shipped supplies physically arrive, transition back to the Orders page.
+2. Simply click the **Mark as Received** UI component. This triggers an instant background API transaction confirming it internally, flipping the metric on the Dashboard off.

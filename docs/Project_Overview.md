@@ -1,47 +1,26 @@
 # Project Overview
 
-The **Inventory Management System (InvMgm)** is a full-stack web application designed to help engineering workshops track their inventory of tools, consumables, and spare parts.
+The **EMERA ideaHUB & Makerspace Inventory Management System (InvMgm)** is a full-stack web application tailored for makerspaces to heavily simplify tracking tools, consumables, and hardware flows.
 
 ## Architecture
 
-The application is built using a lightweight and efficient stack:
+The operational prototype is built using a lightweight and rapidly iterating stack:
 
-*   **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python)
-    *   Provides a high-performance RESTful API.
-    *   Handles database operations via SQLAlchemy.
-    *   Validates data using Pydantic schemas.
-*   **Database**: SQLite
-    *   Simple, serverless, file-based database for easy deployment.
+*   **Backend**: Python + [Flask](https://flask.palletsprojects.com/)
+    *   Provides high-performance rendering and a centralized REST API router.
+    *   Zero excessive class-layer dependencies; queries execute directly against database states.
+*   **Database**: SQLite (`database.db`)
+    *   Robust architecture embedded with `CHECK` constraints mapping to positive inventory logic, making data highly secure from logical bugs.
 *   **Frontend**: Vanilla JavaScript + HTML + CSS
-    *   No complex build steps or heavy frameworks.
-    *   Uses **Tailwind CSS** (via CDN) for modern, responsive styling.
-    *   Communicates with the backend via the native `fetch` API.
+    *   No complex build steps, TS compilation, or heavy CSS frameworks. Relies on custom variables inside `style.css`.
+    *   Communicates asynchronously via native `Fetch API` for smooth page-in-page mutations (like the multi-layer item searching and editing).
 
-## Directory Structure
-
-```text
-InvMgm/
-├── backend/
-│   ├── main.py          # App entry point (FastAPI app instance)
-│   ├── models.py        # Database table definitions (SQLAlchemy)
-│   ├── schemas.py       # Data validation schemas (Pydantic)
-│   ├── routes.py        # API endpoint definitions
-│   ├── crud.py          # Database lookup/create/update/delete logic
-│   ├── database.py      # Database connection & session handling
-│   └── static/          # Serving frontend files
-│       ├── index.html
-│       ├── app.js
-│       └── style.css
-├── docs/                # Project Documentation
-├── e2e_test_script.py   # End-to-End backend test script
-└── inventory.db         # SQLite database file (created on runtime)
-```
+*(Note: There is an older, legacy implementation utilizing FastAPI and SQLAlchemy located in the `backend/` folder setup on port 8000, but the live prototype is mapping explicitly to `app.py` via Flask on port 5000.)*
 
 ## Key Features
 
-1.  **Workshops & Locations**: Manage multiple workshop locations.
-2.  **Categories**: Organize items into logical groups (e.g., "Power Tools", "Safety Gear").
-3.  **Item Management**: comprehensive CRUD operations for inventory items.
-4.  **Stock Tracking**: Real-time quantity updates with low-stock indicators.
-5.  **Logging**: Audit trail for every stock change (additions, removals, shrinkage).
-6.  **Orders**: Simple ordering system to track replenished items.
+1.  **Dashboard KPIs**: View active pulse metrics including Weekly Shop Movements, Out of Stock totals, Low Stock alerts, and Open Purchase requests asynchronously.
+2.  **Frictionless Processing**: Allow users to perform "Quick Transactions" (`IN`/`OUT`) covering specific locations in less than three clicks right from the main dashboard.
+3.  **Bulk Excel / CSV Loading**: Easily provision large catalogs of tools by dumping spreadsheet ledgers natively inside the web app portal without hitting the CLI.
+4.  **Auto-Populating Categorization**: The prototype abandons static Category lists to analyze available stock elements inside the database natively to generate Smart dropdown filter tools live.
+5.  **Audit Logs**: Append-only ledgers ensuring stock additions and subtractions maintain a perfect paper trail.
