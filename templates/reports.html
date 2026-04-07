@@ -21,7 +21,7 @@
             0
         </div>
         <p class="text-muted" style="margin-top:0.5rem; font-size:0.875rem;" id="pending-items-count">
-            Total items pending: 0
+            Total items pending: 0 (Quantity to receive)
         </p>
     </div>
     
@@ -35,6 +35,10 @@
             <span style="font-weight:500;">Weekly Disruption Count</span>
             <span id="rpt-disruptions" style="font-size:1.5rem; font-weight:700;">0</span>
         </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:1rem; padding-bottom:1rem; border-bottom:1px solid var(--border-color);">
+            <span style="font-weight:500;">Top Disruption Driver</span>
+            <span id="rpt-top-driver" style="font-weight:600; color:var(--danger-color);">None</span>
+        </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding-top:1rem;">
             <span style="font-weight:500;">Replacement Parts Readiness</span>
             <span id="rpt-readiness" style="font-size:1.5rem; font-weight:700; color:var(--warning-color);">0%</span>
@@ -42,17 +46,45 @@
     </div>
 </div>
 
+<div class="dashboard-layout" style="grid-template-columns: 1fr 1fr; margin-top:2rem;">
+    <div class="card">
+        <h3>Stock Depletion</h3>
+        <p class="text-muted" style="margin-top:0.5rem; margin-bottom:1rem; font-size:0.875rem;">
+            Items at or below their minimum stock threshold.
+        </p>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:1rem; border-bottom:1px solid var(--border-color);">
+            <span style="font-weight:500;">Low Stock Items</span>
+            <span id="rpt-low-stock" style="font-size:1.5rem; font-weight:700; color:var(--warning-color);">0</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:1rem;">
+            <span style="font-weight:500;">Out of Stock Items</span>
+            <span id="rpt-out-stock" style="font-size:1.5rem; font-weight:700; color:var(--danger-color);">0</span>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h3>Top Used Items (30 Days)</h3>
+        <p class="text-muted" style="margin-top:0.5rem; margin-bottom:1rem; font-size:0.875rem;">
+            Most frequently depleted items based on out movements.
+        </p>
+        <div id="top-used-items-list" style="display:flex; flex-direction:column; gap:0.5rem;">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+</div>
+
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // We will repurpose the /api/dashboard/metrics for now
-        // In a real iteration, we'd add an /api/reports endpoint with grouped history
         fetch('/api/dashboard/metrics')
             .then(r => r.json())
             .then(data => {
                 const metricsHtml = `
                     <div class="card">
-                        <span class="text-muted">Overall Visibility Score</span>
-                        <div class="metric-value">${data.visibility_score}<span style="font-size:1rem;">/10</span></div>
+                        <span class="text-muted">Visibility & Accuracy</span>
+                        <div class="metric-value">
+                            ${data.visibility_score}<span style="font-size:1rem; color:var(--text-color);">/10</span>
+                            <span style="font-size:1.2rem; margin-left: 10px; color: #10b981;">${data.inventory_accuracy}%</span>
+                        </div>
                     </div>
                     <div class="card">
                         <span class="text-muted">Return Compliance</span>
@@ -61,15 +93,30 @@
                     <div class="card">
                         <span class="text-muted">Labeling Coverage</span>
                         <div class="metric-value">${data.labeling_coverage}%</div>
+                        <div style="font-size:0.75rem; color:#64748b; margin-top:5px;">
+                            ${data.labeling_coverage >= 50 ? 'Goal of 50% met!' : 'Progress towards 50% goal: ' + ((data.labeling_coverage/50)*100).toFixed(0) + '%'}
+                        </div>
                     </div>
                 `;
                 document.getElementById('analytics-overview').innerHTML = metricsHtml;
                 
                 document.getElementById('rpt-disruptions').innerText = data.disruptions;
+                document.getElementById('rpt-top-driver').innerText = data.top_disruption_driver;
                 document.getElementById('rpt-readiness').innerText = data.replacement_readiness + '%';
                 
                 document.getElementById('pending-orders-count').innerText = data.pending_orders;
-                document.getElementById('pending-items-count').innerText = `Total items pending: ${data.pending_items}`;
+                document.getElementById('pending-items-count').innerText = `Total items pending: ${data.pending_items} (Quantity to receive)`;
+                
+                document.getElementById('rpt-low-stock').innerText = data.low_stock_items;
+                document.getElementById('rpt-out-stock').innerText = data.out_of_stock_items;
+                
+                const topUsedHtml = data.top_used_items.map(item => `
+                    <div style="display:flex; justify-content:space-between; padding:0.5rem; background:rgba(0,0,0,0.02); border-radius:4px;">
+                        <span style="font-weight:500;">${item.name}</span>
+                        <span style="font-weight:700;">${item.qty}</span>
+                    </div>
+                `).join('');
+                document.getElementById('top-used-items-list').innerHTML = topUsedHtml || '<span class="text-muted">No data available</span>';
             });
     });
 </script>
